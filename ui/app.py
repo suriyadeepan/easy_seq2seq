@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request
 from flask import jsonify
-import _temp
 
 app = Flask(__name__,static_url_path="/static") 
 
@@ -22,11 +21,14 @@ Init seq2seq model
     1. Call main from execute.py
     2. Create decode_line function that takes message as input
 '''
+#_________________________________________________________________
 import tensorflow as tf
 import execute
 
 sess = tf.Session()
 sess, model, enc_vocab, rev_dec_vocab = execute.init_session(sess)
+#_________________________________________________________________
 
+# start app
 if (__name__ == "__main__"): 
     app.run(port = 5000) 
