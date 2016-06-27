@@ -55,7 +55,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
                       tokenizer=None, normalize_digits=True):
     
   if not gfile.Exists(vocabulary_path):
-    print("Creating vocabulary %s from data %s" % (vocabulary_path, data_path))
+    print("Creating vocabulary %s from %s" % (vocabulary_path, data_path))
     vocab = {}
     with gfile.GFile(data_path, mode="rb") as f:
       counter = 0
@@ -91,8 +91,7 @@ def initialize_vocabulary(vocabulary_path):
     raise ValueError("Vocabulary file %s not found.", vocabulary_path)
 
 
-def sentence_to_token_ids(sentence, vocabulary,
-                          tokenizer=None, normalize_digits=True):
+def sentence_to_token_ids(sentence, vocabulary, tokenizer=None, normalize_digits=True):
 
   if tokenizer:
     words = tokenizer(sentence)
@@ -126,8 +125,8 @@ def data_to_token_ids(data_path, target_path, vocabulary_path,
 def prepare_custom_data(working_directory, train_enc, train_dec, test_enc, test_dec, enc_vocabulary_size, dec_vocabulary_size, tokenizer=None):
 
     # Create vocabularies of the appropriate sizes.
-    enc_vocab_path = os.path.join(working_directory, "/vocab%d.enc" % enc_vocabulary_size)
-    dec_vocab_path = os.path.join(working_directory, "/vocab%d.dec" % dec_vocabulary_size)
+    enc_vocab_path = os.path.join(working_directory, "vocab%d.enc" % enc_vocabulary_size)
+    dec_vocab_path = os.path.join(working_directory, "vocab%d.dec" % dec_vocabulary_size)
     create_vocabulary(enc_vocab_path, train_enc, enc_vocabulary_size, tokenizer)
     create_vocabulary(dec_vocab_path, train_dec, dec_vocabulary_size, tokenizer)
 

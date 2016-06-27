@@ -36,7 +36,11 @@ gConfig = {}
 def get_config(config_file='seq2seq.ini'):
     parser = SafeConfigParser()
     parser.read(config_file)
-    return dict( parser.items('basic') + parser.items('advanced') )
+    # get the ints, floats and strings
+    _conf_ints = [ (key, int(value)) for key,value in parser.items('ints') ]
+    _conf_floats = [ (key, float(value)) for key,value in parser.items('floats') ]
+    _conf_strings = [ (key, str(value)) for key,value in parser.items('strings') ]
+    return dict(_conf_ints + _conf_floats + _conf_strings)
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
@@ -84,11 +88,7 @@ def read_data(source_path, target_path, max_size=None):
 def create_model(session, forward_only):
 
   """Create model and initialize or load parameters"""
-  model = seq2seq_model.Seq2SeqModel(
-      gConfig['enc_vocab_size'], gConfig['dec_vocab_size'], _buckets,
-      gConfig['layer_size'], gConfig['num_layers'], gConfig['max_gradient_norm'], gConfig['batch_size'],
-      gConfig['learning_rate'], gConfig['learning_rate_decay_factor'],
-      forward_only=forward_only)
+  model = seq2seq_model.Seq2SeqModel( gConfig['enc_vocab_size'], gConfig['dec_vocab_size'], _buckets, gConfig['layer_size'], gConfig['num_layers'], gConfig['max_gradient_norm'], gConfig['batch_size'], gConfig['learning_rate'], gConfig['learning_rate_decay_factor'], forward_only=forward_only)
 
   ckpt = tf.train.get_checkpoint_state(gConfig['working_directory'])
   if ckpt and tf.gfile.Exists(ckpt.model_checkpoint_path):
@@ -103,7 +103,7 @@ def create_model(session, forward_only):
 def train():
   # prepare dataset
   print("Preparing data in %s" % gConfig['working_directory'])
-  enc_train, dec_train, enc_dev, dec_dev, _, _ = data_utils.prepare_custom_data('train1/train.enc','train1/train.dec','train1/test.enc','train1/test.dec',20000,20000)
+  enc_train, dec_train, enc_dev, dec_dev, _, _ = data_utils.prepare_custom_data(gConfig['working_directory'],gConfig['train_enc'],gConfig['train_dec'],gConfig['test_enc'],gConfig['test_dec'],gConfig['enc_vocab_size'],gConfig['dec_vocab_size'])
 
   with tf.Session() as sess:
     # Create model.
@@ -237,12 +237,16 @@ def self_test():
 
 def main(_):
     # get configuration from seq2seq.ini
+    global gConfig
     gConfig = get_config()
+    print('\n>> Mode : %s\n' %(gConfig['mode']))
     # start training
     if gConfig['mode'] == 'train':
         train()
     else:
         decode()
+    #else:
+    #decode()
 
 if __name__ == '__main__':
     tf.app.run()
