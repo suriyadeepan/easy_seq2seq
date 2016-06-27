@@ -13,20 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Binary for training translation models and decoding from them.
-
-Running this program without --decode will download the WMT corpus into
-the directory specified as --data_dir and tokenize it in a very basic way,
-and then start training a model saving checkpoints to --train_dir.
-
-Running with --decode starts an interactive loop so you can see how
-the current checkpoint translates English sentences into French.
-
-See the following papers for more information on neural translation models.
- * http://arxiv.org/abs/1409.3215
- * http://arxiv.org/abs/1409.0473
- * http://arxiv.org/abs/1412.2007
-"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -44,30 +30,13 @@ import tensorflow as tf
 import data_utils
 import seq2seq_model
 
+from ConfigParser import SafeConfigParser
+gConfig = {}
 
-tf.app.flags.DEFINE_float("learning_rate", 0.5, "Learning rate.")
-tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.99,
-                          "Learning rate decays by this much.")
-tf.app.flags.DEFINE_float("max_gradient_norm", 5.0,
-                          "Clip gradients to this norm.")
-tf.app.flags.DEFINE_integer("batch_size", 64,
-                            "Batch size to use during training.")
-tf.app.flags.DEFINE_integer("size", 1024, "Size of each model layer.")
-tf.app.flags.DEFINE_integer("num_layers", 3, "Number of layers in the model.")
-tf.app.flags.DEFINE_integer("en_vocab_size", 20000, "English vocabulary size.")
-tf.app.flags.DEFINE_integer("fr_vocab_size", 20000, "French vocabulary size.")
-tf.app.flags.DEFINE_string("data_dir", "train1/", "Data directory")
-tf.app.flags.DEFINE_string("train_dir", "train1/", "Training directory.")
-tf.app.flags.DEFINE_integer("max_train_data_size", 0,
-                            "Limit on the size of training data (0: no limit).")
-tf.app.flags.DEFINE_integer("steps_per_checkpoint", 200,
-                            "How many training steps to do per checkpoint.")
-tf.app.flags.DEFINE_boolean("decode", False,
-                            "Set to True for interactive decoding.")
-tf.app.flags.DEFINE_boolean("self_test", False,
-                            "Run a self-test if this is set to True.")
-
-FLAGS = tf.app.flags.FLAGS
+def get_config(config_file='seq2seq.ini'):
+    parser = SafeConfigParser()
+    parser.read(config_file)
+    return dict( parser.items('basic') + parser.items('advanced') )
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
@@ -113,13 +82,15 @@ def read_data(source_path, target_path, max_size=None):
 
 
 def create_model(session, forward_only):
-  """Create translation model and initialize or load parameters in session."""
+
+  """Create model and initialize or load parameters"""
   model = seq2seq_model.Seq2SeqModel(
-      FLAGS.en_vocab_size, FLAGS.fr_vocab_size, _buckets,
-      FLAGS.size, FLAGS.num_layers, FLAGS.max_gradient_norm, FLAGS.batch_size,
-      FLAGS.learning_rate, FLAGS.learning_rate_decay_factor,
+      gConfig['enc_vocab_size'], gConfig['dec_vocab_size'], _buckets,
+      gConfig['layer_size'], gConfig['num_layers'], gConfig['max_gradient_norm'], gConfig['batch_size'],
+      gConfig['learning_rate'], gConfig['learning_rate_decay_factor'],
       forward_only=forward_only)
-  ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
+
+  ckpt = tf.train.get_checkpoint_state(gConfig['working_directory'])
   if ckpt and tf.gfile.Exists(ckpt.model_checkpoint_path):
     print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
     model.saver.restore(session, ckpt.model_checkpoint_path)
@@ -130,22 +101,20 @@ def create_model(session, forward_only):
 
 
 def train():
-  """Train a en->fr translation model using WMT data."""
-  # Prepare WMT data.
-  print("Preparing WMT data in %s" % FLAGS.data_dir)
-  #en_train, fr_train, en_dev, fr_dev, _, _ = data_utils.prepare_wmt_data( FLAGS.data_dir, FLAGS.en_vocab_size, FLAGS.fr_vocab_size)
-  en_train, fr_train, en_dev, fr_dev, _, _ = data_utils.prepare_custom_data('train1/train.enc','train1/train.dec','train1/test.enc','train1/test.dec',20000,20000)
+  # prepare dataset
+  print("Preparing data in %s" % gConfig['working_directory'])
+  enc_train, dec_train, enc_dev, dec_dev, _, _ = data_utils.prepare_custom_data('train1/train.enc','train1/train.dec','train1/test.enc','train1/test.dec',20000,20000)
 
   with tf.Session() as sess:
     # Create model.
-    print("Creating %d layers of %d units." % (FLAGS.num_layers, FLAGS.size))
+    print("Creating %d layers of %d units." % (gConfig['num_layers'], gConfig['layer_size']))
     model = create_model(sess, False)
 
     # Read data into buckets and compute their sizes.
     print ("Reading development and training data (limit: %d)."
-           % FLAGS.max_train_data_size)
-    dev_set = read_data(en_dev, fr_dev)
-    train_set = read_data(en_train, fr_train, FLAGS.max_train_data_size)
+           % gConfig['max_train_data_size'])
+    dev_set = read_data(enc_dev, dec_dev)
+    train_set = read_data(enc_train, dec_train, gConfig['max_train_data_size'])
     train_bucket_sizes = [len(train_set[b]) for b in xrange(len(_buckets))]
     train_total_size = float(sum(train_bucket_sizes))
 
@@ -172,12 +141,12 @@ def train():
           train_set, bucket_id)
       _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
                                    target_weights, bucket_id, False)
-      step_time += (time.time() - start_time) / FLAGS.steps_per_checkpoint
-      loss += step_loss / FLAGS.steps_per_checkpoint
+      step_time += (time.time() - start_time) / gConfig['steps_per_checkpoint']
+      loss += step_loss / gConfig['steps_per_checkpoint']
       current_step += 1
 
       # Once in a while, we save checkpoint, print statistics, and run evals.
-      if current_step % FLAGS.steps_per_checkpoint == 0:
+      if current_step % gConfig['steps_per_checkpoint'] == 0:
         # Print statistics for the previous epoch.
         perplexity = math.exp(loss) if loss < 300 else float('inf')
         print ("global step %d learning rate %.4f step-time %.2f perplexity "
@@ -188,7 +157,7 @@ def train():
           sess.run(model.learning_rate_decay_op)
         previous_losses.append(loss)
         # Save checkpoint and zero timer and loss.
-        checkpoint_path = os.path.join(FLAGS.train_dir, "translate.ckpt")
+        checkpoint_path = os.path.join(gConfig['working_directory'], "seq2seq.ckpt")
         model.saver.save(sess, checkpoint_path, global_step=model.global_step)
         step_time, loss = 0.0, 0.0
         # Run evals on development set and print their perplexity.
@@ -212,12 +181,11 @@ def decode():
     model.batch_size = 1  # We decode one sentence at a time.
 
     # Load vocabularies.
-    #en_vocab_path = os.path.join(FLAGS.data_dir, "vocab%d.en" % FLAGS.en_vocab_size)
-    #fr_vocab_path = os.path.join(FLAGS.data_dir, "vocab%d.fr" % FLAGS.fr_vocab_size)
-    en_vocab_path = 'train1/vocab20000.enc'
-    fr_vocab_path = 'train1/vocab20000.dec'
-    en_vocab, _ = data_utils.initialize_vocabulary(en_vocab_path)
-    _, rev_fr_vocab = data_utils.initialize_vocabulary(fr_vocab_path)
+    enc_vocab_path = os.path.join(gConfig['working_directory'],"vocab%d.enc" % gConfig['enc_vocab_size'])
+    dec_vocab_path = os.path.join(gConfig['working_directory'],"vocab%d.dec" % gConfig['dec_vocab_size'])
+
+    enc_vocab, _ = data_utils.initialize_vocabulary(enc_vocab_path)
+    _, rev_dec_vocab = data_utils.initialize_vocabulary(dec_vocab_path)
 
     # Decode from standard input.
     sys.stdout.write("> ")
@@ -225,7 +193,7 @@ def decode():
     sentence = sys.stdin.readline()
     while sentence:
       # Get token-ids for the input sentence.
-      token_ids = data_utils.sentence_to_token_ids(tf.compat.as_bytes(sentence), en_vocab)
+      token_ids = data_utils.sentence_to_token_ids(tf.compat.as_bytes(sentence), enc_vocab)
       # Which bucket does it belong to?
       bucket_id = min([b for b in xrange(len(_buckets))
                        if _buckets[b][0] > len(token_ids)])
@@ -241,7 +209,7 @@ def decode():
       if data_utils.EOS_ID in outputs:
         outputs = outputs[:outputs.index(data_utils.EOS_ID)]
       # Print out French sentence corresponding to outputs.
-      print(" ".join([tf.compat.as_str(rev_fr_vocab[output]) for output in outputs]))
+      print(" ".join([tf.compat.as_str(rev_dec_vocab[output]) for output in outputs]))
       print("> ", end="")
       sys.stdout.flush()
       sentence = sys.stdin.readline()
@@ -268,25 +236,15 @@ def self_test():
 
 
 def main(_):
-    #train()
-    #decode()
-
-    if FLAGS.decode:
-        decode()
-    else:
+    # get configuration from seq2seq.ini
+    gConfig = get_config()
+    # start training
+    if gConfig['mode'] == 'train':
         train()
+    else:
+        decode()
 
 if __name__ == '__main__':
     tf.app.run()
 
-'''
-  if FLAGS.self_test:
-    self_test()
-  elif FLAGS.decode:
-    decode()
-  else:
-    train()
 
-if __name__ == "__main__":
-  tf.app.run()
-'''

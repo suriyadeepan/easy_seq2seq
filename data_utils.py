@@ -128,19 +128,19 @@ def prepare_custom_data(working_directory, train_enc, train_dec, test_enc, test_
     # Create vocabularies of the appropriate sizes.
     enc_vocab_path = os.path.join(working_directory, "/vocab%d.enc" % enc_vocabulary_size)
     dec_vocab_path = os.path.join(working_directory, "/vocab%d.dec" % dec_vocabulary_size)
-    create_vocabulary(enc_vocab_path, train_enc_path, enc_vocabulary_size, tokenizer)
-    create_vocabulary(dec_vocab_path, train_dec_path, dec_vocabulary_size, tokenizer)
+    create_vocabulary(enc_vocab_path, train_enc, enc_vocabulary_size, tokenizer)
+    create_vocabulary(dec_vocab_path, train_dec, dec_vocabulary_size, tokenizer)
 
     # Create token ids for the training data.
-    enc_train_ids_path = train_enc_path + (".ids%d" % enc_vocabulary_size)
-    dec_train_ids_path = train_dec_path + (".ids%d" % dec_vocabulary_size)
-    data_to_token_ids(train_enc_path , enc_train_ids_path, enc_vocab_path, tokenizer)
-    data_to_token_ids(train_dec_path , dec_train_ids_path, dec_vocab_path, tokenizer)
+    enc_train_ids_path = train_enc + (".ids%d" % enc_vocabulary_size)
+    dec_train_ids_path = train_dec + (".ids%d" % dec_vocabulary_size)
+    data_to_token_ids(train_enc, enc_train_ids_path, enc_vocab_path, tokenizer)
+    data_to_token_ids(train_dec, dec_train_ids_path, dec_vocab_path, tokenizer)
 
     # Create token ids for the development data.
-    enc_dev_ids_path = test_enc_path + (".ids%d" % enc_vocabulary_size)
-    dec_dev_ids_path = test_dec_path + (".ids%d" % dec_vocabulary_size)
-    data_to_token_ids(test_enc_path , enc_dev_ids_path, enc_vocab_path, tokenizer)
-    data_to_token_ids(test_dec_path , dec_dev_ids_path, dec_vocab_path, tokenizer)
+    enc_dev_ids_path = test_enc + (".ids%d" % enc_vocabulary_size)
+    dec_dev_ids_path = test_dec + (".ids%d" % dec_vocabulary_size)
+    data_to_token_ids(test_enc, enc_dev_ids_path, enc_vocab_path, tokenizer)
+    data_to_token_ids(test_dec, dec_dev_ids_path, dec_vocab_path, tokenizer)
 
     return (enc_train_ids_path, dec_train_ids_path, enc_dev_ids_path, dec_dev_ids_path, enc_vocab_path, dec_vocab_path)
