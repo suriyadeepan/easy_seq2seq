@@ -4,6 +4,19 @@ An implementation of Seq2Seq that actually works. I want to make it easy for peo
 
 *Have Fun!*
 
+## Setup
+
+* to download test/train data from Cornell Movie Dialog:
+
+```
+sh data/pull_data.sh
+```
+
+* create temporary working directory prior to training:
+```
+mkdir wed1053_am
+```
+
 ## Training
 
 ```bash
