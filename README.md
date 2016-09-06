@@ -18,7 +18,7 @@ python execute.py
 
 ```bash
 # edit seq2seq.ini file to set 
-#		mode = train
+#		mode = test
 python execute.py
 ```
 
