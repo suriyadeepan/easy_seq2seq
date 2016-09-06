@@ -235,9 +235,9 @@ def self_test():
                  bucket_id, False)
 
 
-def init_session(sess):
+def init_session(sess, conf='seq2seq.ini'):
     global gConfig
-    gConfig = get_config()
+    gConfig = get_config(conf)
  
     # Create model and load parameters.
     model = create_model(sess, True)
@@ -273,33 +273,25 @@ def decode_line(sess, model, enc_vocab, rev_dec_vocab, sentence):
         outputs = outputs[:outputs.index(data_utils.EOS_ID)]
 
     return " ".join([tf.compat.as_str(rev_dec_vocab[output]) for output in outputs])
-'''
-def main(_):
-    # get configuration from seq2seq.ini
-    global gConfig
-    gConfig = get_config()
-    print('\n>> Mode : %s\n' %(gConfig['mode']))
-    # start training
-    if gConfig['mode'] == 'train':
-        train()
+
+if __name__ == '__main__':
+    if len(sys.argv) - 1:
+        gConfig = get_config(sys.argv[1])
     else:
+        # get configuration from seq2seq.ini
+        gConfig = get_config()
+
+    print('\n>> Mode : %s\n' %(gConfig['mode']))
+
+    if gConfig['mode'] == 'train':
+        # start training
+        train()
+    elif gConfig['mode'] == 'test':
+        # interactive decode
         decode()
-    #else:
-    #decode()
-
-tf.app.run()
-'''
-
-# get configuration from seq2seq.ini
-gConfig = get_config()
-print('\n>> Mode : %s\n' %(gConfig['mode']))
-
-if gConfig['mode'] == 'train':
-    # start training
-    train()
-elif gConfig['mode'] == 'test':
-    decode()
-else:
-    print('Serving Content')
-
-
+    else:
+        # wrong way to execute "serve"
+        #   Use : >> python ui/app.py
+        #           uses seq2seq_serve.ini as conf file
+        print('Serve Usage : >> python ui/app.py')
+        print('# uses seq2seq_serve.ini as conf file')
