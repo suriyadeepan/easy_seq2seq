@@ -6,15 +6,17 @@ An implementation of Seq2Seq that actually works. I want to make it easy for peo
 
 ## Setup
 
-* to download test/train data from Cornell Movie Dialog:
+* Download test/train data from Cornell Movie Dialog Corpus
 
-```
-sh data/pull_data.sh
+```bash
+cd data/
+bash pull_data.sh
 ```
 
-* create temporary working directory prior to training:
-```
-mkdir wed1053_am
+* Create temporary working directory prior to training
+
+```bash
+mkdir working_dir
 ```
 
 ## Training
