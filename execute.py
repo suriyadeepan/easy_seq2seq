@@ -30,7 +30,11 @@ import tensorflow as tf
 import data_utils
 import seq2seq_model
 
-from ConfigParser import SafeConfigParser
+try:
+    from ConfigParser import SafeConfigParser
+except:
+    from configparser import SafeConfigParser # In Python 3, ConfigParser has been renamed to configparser for PEP 8 compliance.
+    
 gConfig = {}
 
 def get_config(config_file='seq2seq.ini'):
