@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request
 from flask import jsonify
 
-app = Flask(__name__,static_url_path="/static") 
+app = Flask(__name__,static_url_path="/static")
 
 #############
 # Routing
@@ -11,7 +11,7 @@ def reply():
     return jsonify( { 'text': execute.decode_line(sess, model, enc_vocab, rev_dec_vocab, request.form['msg'] ) } )
 
 @app.route("/")
-def index(): 
+def index():
     return render_template("index.html")
 #############
 
@@ -22,6 +22,10 @@ Init seq2seq model
     2. Create decode_line function that takes message as input
 '''
 #_________________________________________________________________
+import sys
+import os.path
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import tensorflow as tf
 import execute
 
@@ -30,5 +34,5 @@ sess, model, enc_vocab, rev_dec_vocab = execute.init_session(sess, conf='seq2seq
 #_________________________________________________________________
 
 # start app
-if (__name__ == "__main__"): 
-    app.run(port = 5000) 
+if (__name__ == "__main__"):
+    app.run(port = 5000)
