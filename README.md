@@ -4,14 +4,16 @@ An implementation of Seq2Seq that actually works. I want to make it easy for peo
 
 *Have Fun!*
 
-**Update 1.1.2017**
+## Update 1.1.2017
+__________________
 
 I have created another repository - [practical_seq2seq](https://github.com/suriyadeepan/practical_seq2seq) to experiment with the seq2seq model. The new model trained on Twitter chat log and Cornell Movie Dialog corpus performs well. I wrote an article - [Practical seq2seq](http://suriyadeepan.github.io/2016-12-31-practical-seq2seq/), explaining the code.
 
-Hapy New Year, **2017**
+Happy New Year, **2017**
 
 
 ## Setup
+
 
 * Create temporary working directory prior to training
 
