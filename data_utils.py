@@ -47,7 +47,11 @@ def basic_tokenizer(sentence):
   """Very basic tokenizer: split the sentence into a list of tokens."""
   words = []
   for space_separated_fragment in sentence.strip().split():
-    words.extend(re.split(_WORD_SPLIT, str.encode(space_separated_fragment)))
+    if isinstance(space_separated_fragment, str):
+        word = str.encode(space_separated_fragment)
+    else:
+        word = space_separated_fragment  
+    words.extend(re.split(_WORD_SPLIT, word))
   return [w for w in words if w]
 
 
