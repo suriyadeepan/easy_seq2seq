@@ -99,9 +99,10 @@ class Seq2SeqModel(object):
     if use_lstm:
       single_cell = tf.nn.rnn_cell.BasicLSTMCell(size)
     cell = single_cell
+    cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=0.5)
     if num_layers > 1:
       cell = tf.nn.rnn_cell.MultiRNNCell([single_cell] * num_layers)
-
+    
     # The seq2seq function: we use embedding for the input and attention.
     def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
       return tf.nn.seq2seq.embedding_attention_seq2seq(
@@ -154,7 +155,7 @@ class Seq2SeqModel(object):
     if not forward_only:
       self.gradient_norms = []
       self.updates = []
-      opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+      opt = tf.train.AdamOptimizer()
       for b in xrange(len(buckets)):
         gradients = tf.gradients(self.losses[b], params)
         clipped_gradients, norm = tf.clip_by_global_norm(gradients,
