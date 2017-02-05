@@ -53,7 +53,6 @@ _buckets = [(5, 10), (10, 15), (20, 25), (40, 50)]
 
 def read_data(source_path, target_path, max_size=None):
   """Read data from source and target files and put into buckets.
-
   Args:
     source_path: path to the files with token-ids for the source language.
     target_path: path to the file with token-ids for the target language;
@@ -61,7 +60,6 @@ def read_data(source_path, target_path, max_size=None):
       output for n-th line from the source_path.
     max_size: maximum number of lines to read, all other will be ignored;
       if 0 or None, data files will be read completely (no limit).
-
   Returns:
     data_set: a list of length len(_buckets); data_set[n] contains a list of
       (source, target) pairs read from the provided data files that fit
@@ -116,6 +114,7 @@ def train():
   # setup config to use BFC allocator
   config = tf.ConfigProto()
   config.gpu_options.allocator_type = 'BFC'
+  config.gpu_options.allow_growth=True
 
   with tf.Session(config=config) as sess:
     # Create model.
@@ -183,7 +182,13 @@ def train():
                                        target_weights, bucket_id, True)
           eval_ppx = math.exp(eval_loss) if eval_loss < 300 else float('inf')
           print("  eval: bucket %d perplexity %.2f" % (bucket_id, eval_ppx))
+        if perplexity <= gConfig['perplexity_cutoff'] and gConfig['cutoff'] == 'perplexity':
+            print('Perplexity cutoff reached....exiting')
+            return        
         sys.stdout.flush()
+        if current_step >= gConfig['steps_cutoff'] and gConfig['cutoff'] == 'steps':
+            print('Step cutoff reached....exiting')
+            return
 
 
 def decode():
@@ -306,4 +311,4 @@ if __name__ == '__main__':
         #   Use : >> python ui/app.py
         #           uses seq2seq_serve.ini as conf file
         print('Serve Usage : >> python ui/app.py')
-        print('# uses seq2seq_serve.ini as conf file')
+print('# uses seq2seq_serve.ini as conf file')
