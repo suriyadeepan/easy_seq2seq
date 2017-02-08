@@ -27,6 +27,7 @@ import tensorflow as tf
 
 import data_utils
 
+TF_VERSION_1_0 = True
 
 class Seq2SeqModel(object):
   """Sequence-to-sequence model with attention and for multiple buckets.
@@ -88,29 +89,54 @@ class Seq2SeqModel(object):
       b = tf.get_variable("proj_b", [self.target_vocab_size])
       output_projection = (w, b)
 
-      def sampled_loss(inputs, labels):
-        labels = tf.reshape(labels, [-1, 1])
-        return tf.nn.sampled_softmax_loss(w_t, b, inputs, labels, num_samples,
-                self.target_vocab_size)
+
+      if TF_VERSION_1_0:
+        def sampled_loss(labels, inputs):
+          labels = tf.reshape(labels, [-1, 1])
+          return tf.nn.sampled_softmax_loss(w_t, b, labels, inputs, num_samples,
+                  self.target_vocab_size)
+      else:
+        def sampled_loss(inputs, labels):
+          labels = tf.reshape(labels, [-1, 1])
+          return tf.nn.sampled_softmax_loss(w_t, b, inputs, labels, num_samples,
+                  self.target_vocab_size)
       softmax_loss_function = sampled_loss
 
     # Create the internal multi-layer cell for our RNN.
-    single_cell = tf.nn.rnn_cell.GRUCell(size)
+    if TF_VERSION_1_0:
+      single_cell = tf.contrib.rnn.GRUCell(size)
+    else:
+      single_cell = tf.nn.rnn_cell.GRUCell(size)
     if use_lstm:
-      single_cell = tf.nn.rnn_cell.BasicLSTMCell(size)
+      if TF_VERSION_1_0:
+        single_cell = tf.contrib.rnn.BasicLSTMCell(size)
+      else:
+        single_cell = tf.nn.rnn_cell.BasicLSTMCell(size)
     cell = single_cell
     if num_layers > 1:
-      cell = tf.nn.rnn_cell.MultiRNNCell([single_cell] * num_layers)
+      if TF_VERSION_1_0:
+        cell = tf.contrib.rnn.MultiRNNCell([single_cell] * num_layers)
+      else:
+        cell = tf.nn.rnn_cell.MultiRNNCell([single_cell] * num_layers)
 
     # The seq2seq function: we use embedding for the input and attention.
     def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
-      return tf.nn.seq2seq.embedding_attention_seq2seq(
-          encoder_inputs, decoder_inputs, cell,
-          num_encoder_symbols=source_vocab_size,
-          num_decoder_symbols=target_vocab_size,
-          embedding_size=size,
-          output_projection=output_projection,
-          feed_previous=do_decode)
+      if TF_VERSION_1_0:
+        return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
+            encoder_inputs, decoder_inputs, cell,
+            num_encoder_symbols=source_vocab_size,
+            num_decoder_symbols=target_vocab_size,
+            embedding_size=size,
+            output_projection=output_projection,
+            feed_previous=do_decode)
+      else:
+        return tf.nn.seq2seq.embedding_attention_seq2seq(
+            encoder_inputs, decoder_inputs, cell,
+            num_encoder_symbols=source_vocab_size,
+            num_decoder_symbols=target_vocab_size,
+            embedding_size=size,
+            output_projection=output_projection,
+            feed_previous=do_decode)
 
     # Feeds for inputs.
     self.encoder_inputs = []
@@ -131,10 +157,16 @@ class Seq2SeqModel(object):
 
     # Training outputs and losses.
     if forward_only:
-      self.outputs, self.losses = tf.nn.seq2seq.model_with_buckets(
-          self.encoder_inputs, self.decoder_inputs, targets,
-          self.target_weights, buckets, lambda x, y: seq2seq_f(x, y, True),
-          softmax_loss_function=softmax_loss_function)
+      if TF_VERSION_1_0:
+        self.outputs, self.losses = tf.contrib.legacy_seq2seq.model_with_buckets(
+            self.encoder_inputs, self.decoder_inputs, targets,
+            self.target_weights, buckets, lambda x, y: seq2seq_f(x, y, True),
+            softmax_loss_function=softmax_loss_function)
+      else:
+        self.outputs, self.losses = tf.nn.seq2seq.model_with_buckets(
+            self.encoder_inputs, self.decoder_inputs, targets,
+            self.target_weights, buckets, lambda x, y: seq2seq_f(x, y, True),
+            softmax_loss_function=softmax_loss_function)
       # If we use output projection, we need to project outputs for decoding.
       if output_projection is not None:
         for b in xrange(len(buckets)):
@@ -143,11 +175,18 @@ class Seq2SeqModel(object):
               for output in self.outputs[b]
           ]
     else:
-      self.outputs, self.losses = tf.nn.seq2seq.model_with_buckets(
-          self.encoder_inputs, self.decoder_inputs, targets,
-          self.target_weights, buckets,
-          lambda x, y: seq2seq_f(x, y, False),
-          softmax_loss_function=softmax_loss_function)
+      if TF_VERSION_1_0:
+        self.outputs, self.losses = tf.contrib.legacy_seq2seq.model_with_buckets(
+            self.encoder_inputs, self.decoder_inputs, targets,
+            self.target_weights, buckets,
+            lambda x, y: seq2seq_f(x, y, False),
+            softmax_loss_function=softmax_loss_function)
+      else:
+        self.outputs, self.losses = tf.nn.seq2seq.model_with_buckets(
+            self.encoder_inputs, self.decoder_inputs, targets,
+            self.target_weights, buckets,
+            lambda x, y: seq2seq_f(x, y, False),
+            softmax_loss_function=softmax_loss_function)
 
     # Gradients and SGD update operation for training the model.
     params = tf.trainable_variables()
@@ -223,6 +262,18 @@ class Seq2SeqModel(object):
     if not forward_only:
       return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
     else:
+      if TF_VERSION_1_0 and False: # generate freezed pb(tf r0.12 can't freeze graph)
+        graph_name = "hello_graph_test.pb"
+        ckpt_name = "working_dir/seq2seq.ckpt-600"
+        output_graph_name = "seq_all.pb"
+        graph_def = session.graph.as_graph_def()
+        tf.train.write_graph(graph_def, "./", graph_name)
+        import freeze_graph
+        output_names = [out_tensor.name.rsplit(":")[0] for out_tensor in output_feed]
+        output_names = ",".join(output_names)
+        freeze_graph.freeze_graph(graph_name, "", False,
+                ckpt_name, output_names, "save/restore_all",
+                "save/Const:0", output_graph_name, False, "", "")
       return None, outputs[0], outputs[1:]  # No gradient norm, loss, outputs.
 
   def get_batch(self, data, bucket_id):
